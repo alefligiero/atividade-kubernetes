@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: wordpress
-  namespace: labwordpress
   labels:
     app: wordpress
+  name: wordpress
+  namespace: labwordpress
 spec:
   ports:
-    - port: 80
+  - port: 80
   selector:
     app: wordpress
     tier: frontend
-  type: LoadBalancer
+  type: ClusterIP
