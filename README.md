@@ -175,6 +175,122 @@ Para finalizar, basta inserir o comando para aplicar o deploy:
 ```ruby
 kubectl apply -f mysql-deployment.yaml
 ```
-E por fim a aplicação do MySql já estará rodando.
+E por fim a aplicação do MySql já estará rodando..
+
+## Subindo o Wordpress
+
+Com os arquivos de configuração do Mysql devidamente configurados, podemos configurar os arquivos do Wordpress começando pelo seu serviço.
+
+Crie o arquivo wordpress-service.yaml e dentro dele insira os seguintes campos:
+
+```ruby
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress
+  namespace: labwordpress
+  labels:
+    app: wordpress
+spec:
+  ports:
+    - port: 80
+  selector:
+    app: wordpress
+    tier: frontend
+  type: LoadBalancer
+```
+* Observando o campo `kind`, vemos que o tipo a ser criado é um Service, com o nome dado de wordpress especificando a `namespace` em que ele será inserido seguido das `labels` que define como essa aplicação será identificada por outros usuários. 
+* No campo `spec`, é especificado a porta na qual o serviço do wordpress usará, sendo escolhida a porta `80` e também o `selector`, que seria um agrupamento básico primitivo no Kubernetes. 
+
+Para aplicar as confirações, digite o comando no terminal onde o arquivo se encontra:
+```ruby
+kubectl apply -f wordpress-service.yaml
+```
+
+Para solitação de armazenamento dos dados, iremos implementar um PersistentVolumeClaim, que solicitará o acesso ao PersistentVolume, que será criado automaticamente pelo Docker Desktop, usando um StorageClass padrão onde terá os dados armazenados das aplicações em questão. Isso é utilizado caso algum pod morra e não aconteça a perda dos dados já salvos.
+
+Para esta implementação, basta criar um arquivo `yaml`, cujo o nome dado será `wordpress-pvc.yaml` e inserir os seguintes campos:
+
+```ruby
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wp-pv-claim
+  namespace: labwordpress
+  labels:
+    app: wordpress
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 3Gi
+```
+* O tipo definido é de PersistentVolumeClaim, com o nome de `wp-pv-claim` inserido na namespace `labwordpress` com o label já utilizado anteriormente, `app: wordpress`. 
+* Possui também o `accessModes` que define os modos de acesso do PersistentVolume que nesse caso será de Leitura e Escrita por um nó único. 
+* Em seguida, há o `storage`, que é o tamanho que vai ser utilizado para armazenar os dados.
+
+Agora aplicaremos as configurações do PersistentVolumeClaim, digitando o comando no terminal onde o arquivo se encontra:
+
+```ruby
+kubectl apply -f wordpress-pvc.yaml
+```
+
+Para finalizar, faremos o Deployment do container que irá baixar a imagem e subir a aplicação. Para isso, criaremos o arquivo `wordpress-deployment.yaml` e inserir os seguintes campos:
+```ruby
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress
+  namespace: labwordpress
+  labels:
+    app: wordpress
+spec:
+  selector:
+    matchLabels:
+      app: wordpress
+      tier: frontend
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: wordpress
+        tier: frontend
+    spec:
+      containers:
+      - image: wordpress:4.8-apache
+        name: wordpress
+        env:
+        - name: WORDPRESS_DB_HOST
+          value: wordpress-mysql
+        - name: WORDPRESS_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-pass
+              key: password
+        ports:
+        - containerPort: 80
+          name: wordpress
+        volumeMounts:
+        - name: wordpress-persistent-storage-lab
+          mountPath: /var/www/html
+      volumes:
+      - name: wordpress-persistent-storage-lab
+        persistentVolumeClaim:
+          claimName: wp-pv-claim
+```
+
+* O Deployment irá fazer o download da imagem do wordpress na versão 4.8-apache que é especificado na parte de `spec` do arquivo, onde possui também uma variavél de ambiente, sendo ela a senha do ROOT do MySql que vai ser substítuida pelo Secret(`mysql-pass`) configurado anteriormente. Também possui a porta do container 80 definida. (??)
+
+* Há também, o campo `strategy` definido como Recreate que caso aconteça algum erro ao subir o Pod, ele ficará tentando até que erro seja corrigido e não aconteça mais.
+
+* No campo `volumeMounts` é usado para montar o PersistentVolume no diretório /var/lib/mysql dentro do container, e em `volumes`, ele solicita a autorização ao PersistentVolume através do PersistentVolumeClaim já criado anterirmente. (???)
+
+Para finalizar, basta inserir o comando para aplicar o deploy:
+```ruby
+kubectl apply -f wordpress-deployment.yaml
+```
+E por fim a aplicação do Wordpress já estará rodando.
 
 
