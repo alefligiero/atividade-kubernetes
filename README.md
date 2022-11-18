@@ -24,7 +24,7 @@ Para conferir se está tudo funcionando, digite `kubectl get nodes` que deve ret
 # Preparando o ambiente
 Neste ambiente usaremos arquivos no formato `yaml` para aplicar as devidas configurações das aplicações que serão implementadas.
 
-Primeiramente, criaremos uma namespace onde ficará todos os pods, serviços, secrets e outros. Para criar, basta digitar o comanndo:
+Primeiramente, criaremos uma namespace onde ficará todos os pods, services, secrets e outros. Para criar, basta digitar o comanndo:
 ```ruby
 kubectl create namespace <nome-da-namespace>
 ```
@@ -36,7 +36,7 @@ kind: Namespace
 metadata:
   name: labwordpress
 ```
-* No campo `kind` especificamos o que será aplicado cluster, onde nesse caso é uma Namespace e no campo `name` inserimos o nome que será dado a namespace.
+* No campo `kind` especificamos o que será aplicado cluster, onde nesse caso é uma Namespace e no campo `name` inserimos o nome que será dado a namespace, que neste caso é labwordpress.
 
 Salve o arquivo como `ns.yaml` e abra um terminal no diretório onde localiza o arquivo e digite o comando:
 
@@ -48,13 +48,13 @@ Segundamente, crie um diretório onde será armazenados os arquivos yaml que sã
 
 ## Subindo o MySql
 
-Começaremos subindo o serviço que será necessário para que o wordpress acesse o banco de dados do MySql.
+Começaremos subindo o serviço que será necessário para que o WordPress acesse o banco de dados do MySql.
 Crie o arquivo mysql-service.yaml e dentro dele insira os seguintes campos:
 ```ruby
 apiVersion: v1
 kind: Service
 metadata:
-  name: wordpress-mysql
+  name: mysql
   namespace: labwordpress
   labels:
     app: wordpress
@@ -75,18 +75,36 @@ Para aplicar as confirações, digite o comando no terminal onde o arquivo se en
 kubectl apply -f mysql-service.yaml
 ```
 
+Subiremos em seguida, o ConfigMap, que é usado para armazenar dados não-confidenciais em pares chave-valor. Ele será usado no Deployment para aplicar a o usuario e o nome da database que serão utilizadas.
+
+Crie o arquivo mysql-configmap.yaml e insira nele os seguintes campos:
+```ruby
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-configmap
+  namespace: labwordpress
+data:
+  db: "wordpressdb"
+  user: "wordpress"
+  mysql-service: "mysql"
+```
+* O `kind` desse arquivo é um ConfigMap onde possui um `data` que é seguido das chave-valores que serão usadas no arquivo de deployment para inserir as variaveis.
+* O `db` define o nome da database usada, `user` o usuario, e `mysql-service` o serviço que o WordPress fará a conexão para se conectar ao MySql.
+
 Agora subiremos uma secret, que é onde ficará armazenado a senha para acesso ao banco de dados do MySql. Crie o arquivo mysql-password-secret.yaml e cole os campos:
 ```ruby
 apiVersion: v1
 data:
-  password: <sua-senha>
+  rootpass: <senha-do-root>
+  userpass: <senha-do-usuario-wordpress>
 kind: Secret
 metadata:
   name: mysql-pass
   namespace: labwordpress
 type: Opaque
 ```
-* O tipo criado será uma secret que possui um `data` inserido nela (`password`), que será a senha que você deve inserir.
+* O tipo criado será uma secret que possui `data` inserido nela , que serão as senhas para o usuario root e do wordpress, respectivamente.
 
 >**ATENÇÃO**: A senha inserida no secret, deverá estar criptografada em base64. Para criptografar, basta digitar no terminal o comando `echo -n 'sua-senha' | base64` que irá imprimir a mensagem criptografada e inserir no campo password no arquivo do secret.
 
@@ -120,7 +138,7 @@ spec:
 Agora aplicaremos as configurações do PersistentVolumeClaim, digitando o comando no terminal onde o arquivo se encontra:
 
 ```ruby
-kubectl apply -f mysql-password-secret.yaml
+kubectl apply -f mysql-pvc.yaml
 ```
 
 Para finalizar o Deploy do MySql, faremos o Deployment do container que irá baixar a imagem e subir a aplicação. Para isso, criaremos o arquivo mysql-deployment.yaml e inserir os seguintes campos:
@@ -128,7 +146,7 @@ Para finalizar o Deploy do MySql, faremos o Deployment do container que irá bai
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: wordpress-mysql
+  name: mysql
   namespace: labwordpress
   labels:
     app: wordpress
@@ -146,14 +164,29 @@ spec:
         tier: mysql
     spec:
       containers:
-      - image: mysql:5.6
+      - image: mysql:8.0.31
         name: mysql
         env:
         - name: MYSQL_ROOT_PASSWORD
           valueFrom:
             secretKeyRef:
               name: mysql-pass
-              key: password
+              key: rootpass
+        - name: MYSQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: mysql-configmap
+              key: db
+        - name: MYSQL_USER
+          valueFrom:
+            configMapKeyRef:
+              name: mysql-configmap
+              key: user
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-pass
+              key: userpass
         ports:
         - containerPort: 3308
           name: mysql
@@ -165,7 +198,11 @@ spec:
         persistentVolumeClaim:
           claimName: mysql-pv-claim
 ```
-* O Deployment que irá fazer o download da imagem do mysql na versão 5.6 que é especificado na parte de `spec` do arquivo, onde possui também uma variavél de ambiente, sendo ela a senha do ROOT do MySql que vai ser substítuida pelo Secret(`mysql-pass`) configurado anteriormente. Também possui a porta do container 3308 definida. 
+* O Deployment que irá fazer o download da imagem do mysql na versão 8.0.31 que é especificado na parte de `spec` do arquivo, 
+
+* Possui também variaveis de ambiente, que apontam para o Secret(`secretKeyRef`) e para o ConfigMap(`configMapKeyRef`) já configurados anteriormente, apresentando seus respectivos nomes e valores.
+
+* No campo `ports`, localiza a porta do container, escolhida como 3308. 
 
 * Há também, o campo `strategy` definido como Recreate que caso aconteça algum erro ao subir o Pod, ele ficará tentando até que erro seja corrigido e não aconteça mais.
 
@@ -208,44 +245,6 @@ Para aplicar as confirações, digite o comando no terminal onde o arquivo se en
 kubectl apply -f wordpress-service.yaml
 ```
 
-Para que tenha o acesso ao serviço do Wordpress de para quem está fora do cluster, é necessário a criação de um Ingress. Para que ele funcione, o mesmo necessita de um controlador, pois sem ele o Ingress não tem efeito. O controlador a ser usado será o nginx que é simples de se instalar e configurar.
-
-Para instalar o nginx, basta dar um apply no seguinte comando:
-```ruby
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.5.1/deploy/static/provider/cloud/deploy.yaml
-```
-Este comando irá configurar o controlador em uma namespace a parte com todas configurações já definidas(ClusterRole, Role, Jobs, Pods, etc.) que são necessários para o funcionamento do mesmo. Depois de um tempo, todos os pods devem estar funcionando. Digite o comando a seguir para conferir o funcionamento dos pods:
-
-```ruby
-kubectl get pods -n ingress-nginx
-```
-
-Em seguida, com o nginx em funcionamento, aplicaremos o ingress ao namespace para o acesso ao serviço. Para isso basta criar um arquivo com o nome wordpress-ingress.yaml e inserir os seguintes campos:
-```ruby
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: wordpress
-  namespace: labwordpress
-spec:
-  ingressClassName: nginx
-  rules:
-  - host: lab-wordpress.com
-    http:
-      paths:
-      - backend:
-          service:
-            name: wordpress
-            port:
-              number: 80
-        path: /
-        pathType: Prefix
-```
-* O kind definido é o `Ingress`, sendo aplicado na namespace do labwordpress onde se encontra o serviço do mesmo em que ele irá se comunicar.
-* No `spec`, onde possui o ingressClassName, ele aponta para o nginx que foi criado pelo nginx. Também possui um host, onde é colocado o DNS (`lab-wordpress.com`) que aponta para o ip do WordPress(neste caso, localhost, configurado no arquivo hosts da máquina).
-* Ainda no dentro do `spec`, possui um `backend` que define o serviço em que o ingress irá redirecionar e a porta escolhida.
-* Por fim, o `path` que aponta o caminho após o DNS que será seguido com seu tipo.
-
 Para solitação de armazenamento dos dados do WordPress, o PersistentVolumeClaim. Para esta implementação, basta criar um arquivo `yaml`, cujo o nome dado será `wordpress-pvc.yaml` e inserir os seguintes campos:
 
 ```ruby
@@ -272,7 +271,7 @@ Agora aplicaremos as configurações do PersistentVolumeClaim, digitando o coman
 kubectl apply -f wordpress-pvc.yaml
 ```
 
-Para finalizar, faremos o Deployment do container que irá baixar a imagem e subir a aplicação. Para isso, criaremos o arquivo `wordpress-deployment.yaml` e inserir os seguintes campos:
+Em seguida, faremos o Deployment do container que irá baixar a imagem e subir a aplicação. Para isso, criaremos o arquivo `wordpress-deployment.yaml` e inserir os seguintes campos:
 ```ruby
 apiVersion: apps/v1
 kind: Deployment
@@ -280,7 +279,7 @@ metadata:
   name: wordpress
   namespace: labwordpress
   labels:
-    app: wordpresss
+    app: wordpress
 spec:
   selector:
     matchLabels:
@@ -295,16 +294,29 @@ spec:
         tier: frontend
     spec:
       containers:
-      - image: wordpress:4.8-apache
+      - image: wordpress:6.1.1
         name: wordpress
         env:
         - name: WORDPRESS_DB_HOST
-          value: wordpress-mysql
+          valueFrom:
+            configMapKeyRef:
+              name: mysql-configmap
+              key: mysql-service
+        - name: WORDPRESS_DB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: mysql-configmap
+              key: user
         - name: WORDPRESS_DB_PASSWORD
           valueFrom:
             secretKeyRef:
               name: mysql-pass
-              key: password
+              key: userpass
+        - name: WORDPRESS_DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: mysql-configmap
+              key: db
         ports:
         - containerPort: 80
           name: wordpress
@@ -317,7 +329,9 @@ spec:
           claimName: wp-pv-claim
 ```
 
-* O Deployment irá fazer o download da imagem do wordpress na versão 4.8-apache, onde possui duas variaveis de ambiente, sendo uma, a `WORDPRESS_DB_HOST` que aponta para o serviço do mysql para se conectar a database, e outra, MYSQL_DB_PASSWORD sendo a senha do ROOT do MySql para conectar a database que vai ser substítuida pelo Secret(`mysql-pass`) configurado anteriormente. Também possui a porta do container 80 definida.
+* O Deployment irá fazer o download da imagem do wordpress na versão 6.1.1, onde possui quatro variaveis de ambiente, onde a `WORDPRESS_DB_HOST`, `WORDPRESS_DB_USER` e `WORDPRES_DB_NAME` apontam para ConfigMap feito anteriormente. Já a variavel `WORDPRESS_DB_PASSWORD` aponta para o secret.
+
+* No campo `port` possui a porta do container definida por 80.
 
 * Há também, o campo `strategy` definido como Recreate que caso aconteça algum erro ao subir o Pod
 
@@ -326,6 +340,49 @@ spec:
 Para finalizar, basta inserir o comando para aplicar o deploy:
 ```ruby
 kubectl apply -f wordpress-deployment.yaml
+```
+
+Para que tenha o acesso ao serviço do Wordpress de para quem está fora do cluster, é necessário a criação de um Ingress. Para que ele funcione, o mesmo necessita de um controlador, pois sem ele o Ingress não tem efeito. O controlador a ser usado será o nginx que é simples de se instalar e configurar.
+
+Para instalar o nginx, basta dar um apply no seguinte comando:
+```ruby
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.5.1/deploy/static/provider/cloud/deploy.yaml
+```
+Este comando irá configurar o controlador em uma namespace a parte com todas configurações já definidas(ClusterRole, Role, Jobs, Pods, etc.) que são necessários para o funcionamento do mesmo. Depois de um tempo, todos os pods devem estar funcionando. Digite o comando a seguir para conferir o funcionamento dos pods:
+
+```ruby
+kubectl get pods -n ingress-nginx
+```
+
+Para finalizar, com o nginx em funcionamento, aplicaremos o ingress ao namespace para o acesso ao serviço. Para isso basta criar um arquivo com o nome wordpress-ingress.yaml e inserir os seguintes campos:
+```ruby
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wordpress
+  namespace: labwordpress
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: lab-wordpress.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: wordpress
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+```
+* O kind definido é o `Ingress`, sendo aplicado na namespace do labwordpress onde se encontra o serviço do mesmo em que ele irá se comunicar.
+* No `spec`, onde possui o ingressClassName, ele aponta para o nginx que foi criado pelo nginx. Também possui um host, onde é colocado o DNS (`lab-wordpress.com`) que aponta para o ip do WordPress(neste caso, localhost, configurado no arquivo hosts da máquina).
+* Ainda no dentro do `spec`, possui um `backend` que define o serviço em que o ingress irá redirecionar e a porta escolhida.
+* Por fim, o `path` que aponta o caminho após o DNS que será seguido com seu tipo.
+
+Para aplicar esta configuração, basta digitar o comando no terminal:
+```ruby
+kubectl apply -f wordpress-ingress.yaml
 ```
 E por fim a aplicação do Wordpress já estará rodando.
 
@@ -343,4 +400,4 @@ Em seguida, você deve preencher as informações pedidas para finalizar a insta
 
 ![img4](https://user-images.githubusercontent.com/108817932/202471270-4e5b39ff-da10-40e7-bb2e-7c140ab7f43f.png)
 
-E finalmente ter acesso ao dashboard da aplicação.
+E assim ter acesso ao dashboard da aplicação.
