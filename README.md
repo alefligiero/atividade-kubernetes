@@ -92,6 +92,11 @@ data:
 * O `kind` desse arquivo é um ConfigMap onde possui um `data` que é seguido das chave-valores que serão usadas no arquivo de deployment para inserir as variaveis.
 * O `db` define o nome da database usada, `user` o usuario, e `mysql-service` o serviço que o WordPress fará a conexão para se conectar ao MySql.
 
+Para aplicar está implementação, basta digitar no terminal onde o arquivo se encontra:
+```ruby
+kubectl apply -f mysql-configmap.yaml
+```
+
 Agora subiremos uma secret, que é onde ficará armazenado a senha para acesso ao banco de dados do MySql. Crie o arquivo mysql-password-secret.yaml e cole os campos:
 ```ruby
 apiVersion: v1
