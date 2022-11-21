@@ -24,7 +24,7 @@ Para conferir se está tudo funcionando, digite `kubectl get nodes` que deve ret
 # Preparando o ambiente
 Neste ambiente usaremos arquivos no formato `yaml` para aplicar as devidas configurações das aplicações que serão implementadas.
 
-Primeiramente, criaremos uma namespace onde ficará todos os pods, services, secrets e outros. Para criar, basta digitar o comanndo:
+Primeiramente, criaremos uma namespace onde ficará todos os pods, services, secrets e outros. Para criar, basta digitar o comando:
 ```ruby
 kubectl create namespace <nome-da-namespace>
 ```
@@ -66,7 +66,7 @@ spec:
     tier: mysql
   clusterIP: None
 ```
-* É visível que, o tipo a ser criado é um Service, com o nome dado de wordpress-mysql especificando a `namespace` em que ele será inserido seguido das `labels` que define como essa aplicação será identificada por outros usuários. 
+* É visível que, o tipo a ser criado é um Service, com o nome dado de mysql especificando a `namespace` em que ele será inserido seguido das `labels` que define como essa aplicação será identificada por outros usuários. 
 * No campo `spec`, é especificado a porta na qual o serviço do MySql usará, sendo escolhida a porta `3308` e também o `selector`, que seria um agrupamento básico primitivo no Kubernetes. 
 * O campo `ClusterIP` define que, neste caso, este serviço não possuirá nenhum.
 
@@ -90,7 +90,7 @@ data:
   mysql-service: "mysql"
 ```
 * O `kind` desse arquivo é um ConfigMap onde possui um `data` que é seguido das chave-valores que serão usadas no arquivo de deployment para inserir as variaveis.
-* O `db` define o nome da database usada, `user` o usuario, e `mysql-service` o serviço que o WordPress fará a conexão para se conectar ao MySql.
+* O `db` define o nome da database usada, `user` o usuário, e `mysql-service` o serviço que o WordPress fará a conexão para se conectar ao MySql.
 
 Para aplicar está implementação, basta digitar no terminal onde o arquivo se encontra:
 ```ruby
@@ -203,7 +203,7 @@ spec:
         persistentVolumeClaim:
           claimName: mysql-pv-claim
 ```
-* O Deployment que irá fazer o download da imagem do mysql na versão 8.0.31 que é especificado na parte de `spec` do arquivo, 
+* O Deployment que irá fazer o download da imagem do mysql na versão 8.0.31 que é especificado na parte de `spec` do arquivo. 
 
 * Possui também variaveis de ambiente, que apontam para o Secret(`secretKeyRef`) e para o ConfigMap(`configMapKeyRef`) já configurados anteriormente, apresentando seus respectivos nomes e valores.
 
@@ -384,7 +384,7 @@ spec:
       storage: 3Gi
 ```
 * O tipo definido é de PersistentVolumeClaim, com o nome de `wp-pv-claim` inserido na namespace `labwordpress` com o label já utilizado anteriormente, `app: wordpress`. 
-* Em seguida, há o `storage`, cujo ele também possui um tamanho de 3Gi para armazenar os dados.
+* Em seguida, há o `storage`, que define um tamanho de 3Gi para armazenar os dados.
 
 Agora aplicaremos as configurações do PersistentVolumeClaim, digitando o comando no terminal onde o arquivo se encontra:
 
@@ -454,7 +454,7 @@ spec:
 
 * No campo `port` possui a porta do container definida por 80.
 
-* Há também, o campo `strategy` definido como Recreate que caso aconteça algum erro ao subir o Pod
+* Há também, o campo `strategy` definido como Recreate que caso aconteça algum erro ao subir o Pod.
 
 * No campo `volumeMounts` é usado para montar o PersistentVolume no diretório /var/www/html dentro do container, e em `volumes`, ele solicita a autorização ao PersistentVolume através do PersistentVolumeClaim já criado anterirmente.
 
@@ -463,14 +463,14 @@ Para finalizar, basta inserir o comando para aplicar o deploy:
 kubectl apply -f wordpress-deployment.yaml
 ```
 
-Para que tenha o acesso ao serviço do Wordpress de para quem está fora do cluster, é necessário a criação de um Ingress. Para que ele funcione, o mesmo necessita de um controlador, pois sem ele o Ingress não tem efeito. O controlador a ser usado será o nginx que é simples de se instalar e configurar.
+Para que tenha o acesso ao serviço do Wordpress fora do cluster, é necessário a criação de um Ingress. Para que ele funcione, o mesmo necessita de um controlador, pois sem ele o Ingress não tem efeito. O controlador a ser usado será o nginx que é simples de se instalar e configurar.
 
 Para instalar o nginx, basta dar um apply no seguinte comando:
 ```ruby
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.5.1/deploy/static/provider/cloud/deploy.yaml
 ```
-Este comando irá configurar o controlador em uma namespace a parte com todas configurações já definidas(ClusterRole, Role, Jobs, Pods, etc.) que são necessários para o funcionamento do mesmo. Depois de um tempo, todos os pods devem estar funcionando. Digite o comando a seguir para conferir o funcionamento dos pods:
-
+Este comando irá configurar o controlador em uma namespace a parte com todas configurações já definidas(ClusterRole, Role, Jobs, Pods, etc.) que são necessários para o funcionamento do mesmo. Depois de um tempo, todos os pods devem estar funcionando.
+Digite o comando a seguir para conferir o funcionamento dos pods:
 ```ruby
 kubectl get pods -n ingress-nginx
 ```
@@ -499,9 +499,8 @@ spec:
 * O kind definido é o `Ingress`, sendo aplicado na namespace do labwordpress onde se encontra o serviço do mesmo em que ele irá se comunicar.
 * No `spec`, onde possui o ingressClassName, ele aponta para o nginx que foi criado pelo nginx. Também possui um host, onde é colocado o DNS (`lab-wordpress.com`) que aponta para o ip do WordPress(neste caso, localhost, configurado no arquivo hosts da máquina).
 * Ainda no dentro do `spec`, possui um `backend` que define o serviço em que o ingress irá redirecionar e a porta escolhida.
-* Por fim, o `path` que aponta o caminho após o DNS que será seguido com seu tipo.
+* Por fim, o `path` que aponta o caminho após o DNS que será seguido com seu tipo.Para aplicar esta configuração, basta digitar o comando no terminal:
 
-Para aplicar esta configuração, basta digitar o comando no terminal:
 ```ruby
 kubectl apply -f wordpress-ingress.yaml
 ```
