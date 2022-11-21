@@ -323,11 +323,11 @@ spec:
           claimName: wp-pv-claim
 ```
 
-* O Deployment irá fazer o download da imagem do wordpress na versão 4.8-apache que é especificado na parte de `spec` do arquivo, onde possui também uma variavél de ambiente, sendo ela a senha do ROOT do MySql que vai ser substítuida pelo Secret(`mysql-pass`) configurado anteriormente. Também possui a porta do container 80 definida. (??)
+* O Deployment irá fazer o download da imagem do wordpress na versão 4.8-apache que é especificado na parte de `spec` do arquivo, onde possui também uma variavél de ambiente, sendo ela a senha do ROOT do MySql que vai ser substítuida pelo Secret(`mysql-pass`) configurado anteriormente. Também possui a porta do container 80 definida.
 
 * Há também, o campo `strategy` definido como Recreate que caso aconteça algum erro ao subir o Pod, ele ficará tentando até que erro seja corrigido e não aconteça mais.
 
-* No campo `volumeMounts` é usado para montar o PersistentVolume no diretório /var/lib/mysql dentro do container, e em `volumes`, ele solicita a autorização ao PersistentVolume através do PersistentVolumeClaim já criado anterirmente. (???)
+* No campo `volumeMounts` é usado para montar o PersistentVolume no diretório /var/lib/mysql dentro do container, e em `volumes`, ele solicita a autorização ao PersistentVolume através do PersistentVolumeClaim já criado anterirmente.
 
 Para finalizar, basta inserir o comando para aplicar o deploy:
 ```ruby
