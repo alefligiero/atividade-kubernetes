@@ -219,7 +219,7 @@ kubectl apply -f mysql-deployment.yaml
 ```
 E por fim a aplicação do MySql já estará rodando.
 
-## Subindo o Wordpress
+## Subindo o WordPress
 
 Com os arquivos de configuração do Mysql devidamente configurados, podemos configurar os arquivos do Wordpress começando pelo seu serviço.
 
