@@ -66,7 +66,7 @@ spec:
     tier: mysql
   clusterIP: None
 ```
-* É visível que, o tipo a ser criado é um Service, com o nome dado de wordpress-mysql especificando a `namespace` em que ele será inserido seguido das `labels` que define como essa aplicação será identificada por outros usuários. 
+* É visível que, o tipo a ser criado é um Service, com o nome dado de mysql especificando a `namespace` em que ele será inserido seguido das `labels` que define como essa aplicação será identificada por outros usuários. 
 * No campo `spec`, é especificado a porta na qual o serviço do MySql usará, sendo escolhida a porta `3308` e também o `selector`, que seria um agrupamento básico primitivo no Kubernetes. 
 * O campo `ClusterIP` define que, neste caso, este serviço não possuirá nenhum.
 
