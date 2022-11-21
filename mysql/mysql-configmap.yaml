@@ -4,6 +4,6 @@ metadata:
   name: mysql-configmap
   namespace: labwordpress
 data:
-  db: "wordpressdb"
-  user: "wordpress"
-  mysql-service: "mysql"
+  db: wordpressdb
+  user: wordpress
+  mysql-service: mysql
