@@ -118,7 +118,7 @@ Para aplicar as confirações, digite o comando no terminal onde o arquivo se en
 kubectl apply -f mysql-password-secret.yaml
 ```
 
-Para o armazenamento dos dados, iremos implementar um PersistentVolumeClaim, que irá requerir ao PersistentVolume, que será criado automaticamente pelo Docker Desktop ao aplicar está configuração, onde terá os dados armazenados das aplicações em questão no disco da máquina host, atrelado a uma StorageClass padrão (`hostpath`). Isso é utilizado caso os pods morram, evita que os dados já salvos não sejam perdidos.
+Para o armazenamento dos dados, iremos implementar um PersistentVolumeClaim, que irá requerir ao PersistentVolume, que será criado automaticamente por uma StorageClass padrão, a `hostpath`(já criada pelo Docker Desktop), ao aplicar está configuração, onde terá os dados armazenados das aplicações em questão no disco no nó do cluster. Isso é utilizado caso os pods morram, evita que os dados já salvos não sejam perdidos.
 
 Para esta implementação, basta criar um arquivo `yaml`, cujo o nome dado será `mysql-pvc.yaml` e inserir os seguintes campos:
 ```ruby
