@@ -118,7 +118,7 @@ Para aplicar as confirações, digite o comando no terminal onde o arquivo se en
 kubectl apply -f mysql-password-secret.yaml
 ```
 
-Para o armazenamento dos dados, iremos implementar um PersistentVolumeClaim, que irá acessar o PersistentVolume, que será criado automaticamente pelo Docker Desktop ao aplicar está configuração, usando um StorageClass padrão (`hostpath`) onde terá os dados armazenados das aplicações em questão no disco da máquina host. Isso é utilizado caso algum pod morra e não aconteça a perda dos dados já salvos.
+Para o armazenamento dos dados, iremos implementar um PersistentVolumeClaim, que irá requerir ao PersistentVolume, que será criado automaticamente pelo Docker Desktop ao aplicar está configuração, onde terá os dados armazenados das aplicações em questão no disco da máquina host, atrelado a uma StorageClass padrão (`hostpath`). Isso é utilizado caso os pods morram, evita que os dados já salvos não sejam perdidos.
 
 Para esta implementação, basta criar um arquivo `yaml`, cujo o nome dado será `mysql-pvc.yaml` e inserir os seguintes campos:
 ```ruby
@@ -211,7 +211,7 @@ spec:
 
 * Há também, o campo `strategy` definido como Recreate que caso aconteça algum erro ao subir o Pod, ele ficará tentando até que erro seja corrigido e não aconteça mais.
 
-* No campo `volumeMounts` é usado para montar o volume no diretório /var/lib/mysql dentro do container, e em `volumes`, ele acessa ao PersistentVolume através do PersistentVolumeClaim já criado anteriormente.
+* No campo `volumeMounts` é usado para montar o volume no diretório /var/lib/mysql dentro do container, e em `volumes`, ele solicita ao PersistentVolume através do PersistentVolumeClaim já criado anteriormente.
 
 Para finalizar, basta inserir o comando para aplicar o deploy:
 ```ruby
@@ -340,7 +340,7 @@ spec:
 
 * Há também, o campo `strategy` definido como Recreate que caso aconteça algum erro ao subir o Pod.
 
-* No campo `volumeMounts` é usado para montar o volume no diretório /var/www/html dentro do container, e em `volumes`, ele acessa o PersistentVolume através do PersistentVolumeClaim já criado anteriormente.
+* No campo `volumeMounts` é usado para montar o volume no diretório /var/www/html dentro do container, e em `volumes`, ele solicita o PersistentVolume através do PersistentVolumeClaim já criado anteriormente.
 
 Para finalizar, basta inserir o comando para aplicar o deploy:
 ```ruby
