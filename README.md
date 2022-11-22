@@ -118,7 +118,7 @@ Para aplicar as confirações, digite o comando no terminal onde o arquivo se en
 kubectl apply -f mysql-password-secret.yaml
 ```
 
-Para solitação de armazenamento dos dados, iremos implementar um PersistentVolumeClaim, que solicitará o acesso ao PersistentVolume, que será criado automaticamente pelo Docker Desktop, usando um StorageClass padrão onde terá os dados armazenados das aplicações em questão. Isso é utilizado caso algum pod morra e não aconteça a perda dos dados já salvos.
+Para o armazenamento dos dados, iremos implementar um PersistentVolumeClaim, que irá acessar o PersistentVolume, que será criado automaticamente pelo Docker Desktop ao aplicar está configuração, usando um StorageClass padrão (`hostpath`) onde terá os dados armazenados das aplicações em questão no disco da máquina host. Isso é utilizado caso algum pod morra e não aconteça a perda dos dados já salvos.
 
 Para esta implementação, basta criar um arquivo `yaml`, cujo o nome dado será `mysql-pvc.yaml` e inserir os seguintes campos:
 ```ruby
@@ -137,7 +137,7 @@ spec:
       storage: 3Gi
 ```
 * O tipo definido é de PersistentVolumeClaim, com o nome de `mysql-pv-claim` inserido na namespace `labwordpress` com o label já utilizado anteriormente, `app: wordpress`. 
-* Possui também o `accessModes` que define os modos de acesso do PersistentVolume que nesse caso será de Leitura e Escrita por um nó único. 
+* Possui também o `accessModes` que define os modos de acesso do PersistentVolume que nesse caso será de Leitura e Escrita. 
 * Em seguida, há o `storage`, que é o tamanho que vai ser utilizado para armazenar os dados.
 
 Agora aplicaremos as configurações do PersistentVolumeClaim, digitando o comando no terminal onde o arquivo se encontra:
@@ -211,7 +211,7 @@ spec:
 
 * Há também, o campo `strategy` definido como Recreate que caso aconteça algum erro ao subir o Pod, ele ficará tentando até que erro seja corrigido e não aconteça mais.
 
-* No campo `volumeMounts` é usado para montar o PersistentVolume no diretório /var/lib/mysql dentro do container, e em `volumes`, ele solicita a autorização ao PersistentVolume através do PersistentVolumeClaim já criado anteriormente.
+* No campo `volumeMounts` é usado para montar o volume no diretório /var/lib/mysql dentro do container, e em `volumes`, ele acessa ao PersistentVolume através do PersistentVolumeClaim já criado anteriormente.
 
 Para finalizar, basta inserir o comando para aplicar o deploy:
 ```ruby
@@ -250,7 +250,7 @@ Para aplicar as confirações, digite o comando no terminal onde o arquivo se en
 kubectl apply -f wordpress-service.yaml
 ```
 
-Para solitação de armazenamento dos dados do WordPress, o PersistentVolumeClaim. Para esta implementação, basta criar um arquivo `yaml`, cujo o nome dado será `wordpress-pvc.yaml` e inserir os seguintes campos:
+Para o armazenamento dos dados do WordPress, cria-se o PersistentVolumeClaim. Para esta implementação, basta criar um arquivo `yaml`, cujo o nome dado será `wordpress-pvc.yaml` e inserir os seguintes campos:
 
 ```ruby
 apiVersion: v1
@@ -340,7 +340,7 @@ spec:
 
 * Há também, o campo `strategy` definido como Recreate que caso aconteça algum erro ao subir o Pod.
 
-* No campo `volumeMounts` é usado para montar o PersistentVolume no diretório /var/www/html dentro do container, e em `volumes`, ele solicita a autorização ao PersistentVolume através do PersistentVolumeClaim já criado anterirmente.
+* No campo `volumeMounts` é usado para montar o volume no diretório /var/www/html dentro do container, e em `volumes`, ele acessa o PersistentVolume através do PersistentVolumeClaim já criado anteriormente.
 
 Para finalizar, basta inserir o comando para aplicar o deploy:
 ```ruby
