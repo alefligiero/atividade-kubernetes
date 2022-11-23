@@ -24,7 +24,7 @@ Para conferir se está tudo funcionando, digite `kubectl get nodes` que deve ret
 # Preparando o ambiente
 Neste ambiente usaremos arquivos no formato `yaml` para aplicar as devidas configurações das aplicações que serão implementadas.
 
-Primeiramente, criaremos uma namespace onde ficará todos os pods, services, secrets e outros. Para criar, basta digitar o comando:
+Primeiramente, crie um diretório onde será armazenados os arquivos yaml que são necessários para a configuração do WordPress e MySql. Em seguida criaremos uma namespace onde ficará todos os pods, services, secrets e outros. Para criar, basta digitar o comando:
 ```ruby
 kubectl create namespace <nome-da-namespace>
 ```
@@ -36,15 +36,15 @@ kind: Namespace
 metadata:
   name: labwordpress
 ```
-* No campo `kind` especificamos o que será aplicado cluster, onde nesse caso é uma Namespace e no campo `name` inserimos o nome que será dado a namespace, que neste caso é labwordpress.
+* No campo `kind` especificamos o que será aplicado cluster, onde nesse caso é uma Namespace e no campo `metadata`, são os metadados que serão usados para especificar algumas configurações como o campo `name` onde inserimos o nome que será dado a namespace, que neste caso é `labwordpress`.
 
-Salve o arquivo como `ns.yaml` e abra um terminal no diretório onde localiza o arquivo e digite o comando:
+Salve o arquivo como `ns.yaml` e abra um terminal no diretório onde se localiza o arquivo e digite o comando:
 
 ```ruby
 kubectl apply -f ns.yaml
 ```
 
-Segundamente, crie um diretório onde será armazenados os arquivos yaml que são necessários para a configuração do WordPress e MySql. Dentro do diretório, crie outros dois para armazenar os arquivos separadamente das aplicações.
+Ainda no diretório crie outros dois diretórios para armazenar os arquivos separadamente das aplicações.
 
 ## Subindo o MySql
 
@@ -67,15 +67,15 @@ spec:
   clusterIP: None
 ```
 * É visível que, o tipo a ser criado é um Service, com o nome dado de mysql especificando a `namespace` em que ele será inserido seguido das `labels` que define como essa aplicação será identificada por outros usuários. 
-* No campo `spec`, é especificado a porta na qual o serviço do MySql usará, sendo escolhida a porta `3308` e também o `selector`, que seria um agrupamento básico primitivo no Kubernetes. 
-* O campo `ClusterIP` define que, neste caso, este serviço não possuirá nenhum.
+* No campo `spec`, é especificado a porta na qual o serviço do MySql usará, sendo escolhida a porta `3308` e também o `selector`, que seria um agrupamento básico primitivo no Kubernetes para identificação para outros Pods.
+* O campo `ClusterIP` define o IP de acesso ao serviço em questão que, neste caso, este serviço não possuirá nenhum, pois esse service é de conexão somente interna que será feita pelo WordPress.
 
 Para aplicar as confirações, digite o comando no terminal onde o arquivo se encontra:
 ```ruby
 kubectl apply -f mysql-service.yaml
 ```
 
-Subiremos em seguida, o ConfigMap, que é usado para armazenar dados não-confidenciais em pares chave-valor. Ele será usado no Deployment para aplicar a o usuario e o nome da database que serão utilizadas.
+Subiremos em seguida, o ConfigMap, que é usado para armazenar dados não-confidenciais em pares chave-valor. Ele será usado no Deployment para aplicar a o usuário, nome da database e  que serão utilizadas.
 
 Crie o arquivo mysql-configmap.yaml e insira nele os seguintes campos:
 ```ruby
@@ -118,7 +118,7 @@ Para aplicar as confirações, digite o comando no terminal onde o arquivo se en
 kubectl apply -f mysql-password-secret.yaml
 ```
 
-Para o armazenamento dos dados, iremos implementar um PersistentVolumeClaim, que irá requerir ao PersistentVolume, que será criado automaticamente por uma StorageClass padrão, a `hostpath`(já criada pelo Docker Desktop), ao aplicar está configuração, onde terá os dados armazenados das aplicações em questão no disco no nó do cluster. Isso é utilizado caso os pods morram, evita que os dados já salvos não sejam perdidos.
+Para o armazenamento dos dados, iremos implementar um PersistentVolumeClaim, que irá requerir ao PersistentVolume, que será criado automaticamente por uma StorageClass padrão, a `hostpath`(já criada pelo Docker Desktop), ao aplicar está configuração, onde terá os dados armazenados das aplicações em questão no disco no nó do cluster. Isso é utilizado caso os pods morram, evita que os dados já salvos não sejam perdidos e ao subir novamente os pods, os dados sejam recuperados.
 
 Para esta implementação, basta criar um arquivo `yaml`, cujo o nome dado será `mysql-pvc.yaml` e inserir os seguintes campos:
 ```ruby
@@ -203,7 +203,7 @@ spec:
         persistentVolumeClaim:
           claimName: mysql-pv-claim
 ```
-* O Deployment que irá fazer o download da imagem do mysql na versão 8.0.31 que é especificado na parte de `spec` do arquivo. 
+* O Deployment que irá criar um container com a imagem do mysql na versão 8.0.31 que é especificado na parte de `spec` do arquivo. Esse container ficará dentro de um pod que será criado na namespace inserida 
 
 * Possui também variaveis de ambiente, que apontam para o Secret(`secretKeyRef`) e para o ConfigMap(`configMapKeyRef`) já configurados anteriormente, apresentando seus respectivos nomes e valores.
 
@@ -211,7 +211,7 @@ spec:
 
 * Há também, o campo `strategy` definido como Recreate que caso aconteça algum erro ao subir o Pod, ele ficará tentando até que erro seja corrigido e não aconteça mais.
 
-* No campo `volumeMounts` é usado para montar o volume no diretório /var/lib/mysql dentro do container, e em `volumes`, ele solicita ao PersistentVolume através do PersistentVolumeClaim já criado anteriormente.
+* No campo `volumeMounts` é usado para montar o volume no diretório /var/lib/mysql dentro do container, e em `volumes`, ele solicita ao PersistentVolume através do PersistentVolumeClaim já criado anteriormente para armazenamento dos dados do MySql na máquina host.
 
 Para finalizar, basta inserir o comando para aplicar o deploy:
 ```ruby
@@ -221,7 +221,7 @@ E por fim a aplicação do MySql já estará rodando..
 
 ## Subindo o WordPress
 
-Com os arquivos de configuração do Mysql devidamente configurados, podemos configurar os arquivos do Wordpress começando pelo seu serviço.
+Com os arquivos de configuração do Mysql devidamente configurados, podemos configurar os arquivos do WordPress começando pelo seu serviço.
 
 Crie o arquivo wordpress-service.yaml e dentro dele insira os seguintes campos:
 
@@ -241,9 +241,9 @@ spec:
     tier: frontend
   type: ClusterIP
 ```
-* Observando o campo `kind`, vemos que o tipo a ser criado é um Service, com o nome dado de wordpress especificando a `namespace` em que ele será inserido seguido das `labels` que define como essa aplicação será identificada por outros usuários. 
+* Observando o campo `kind`, vemos que o tipo a ser criado é um Service, com o nome dado de `wordpress` especificando a `namespace` em que ele será inserido seguido das `labels` que define como essa aplicação será identificada por outros usuários e pods.
 * No campo `spec`, é especificado a porta na qual o serviço do wordpress usará, sendo escolhida a porta `80`.
-* Por fim, é definido o tipo de serviço que será usado para a conexão, sendo ele `ClusterIP`.
+* Por fim, é definido o tipo de serviço que será usado para a conexão, sendo ele `ClusterIP`, que irá gerar um IP.
 
 Para aplicar as confirações, digite o comando no terminal onde o arquivo se encontra:
 ```ruby
@@ -334,13 +334,13 @@ spec:
           claimName: wp-pv-claim
 ```
 
-* O Deployment irá fazer o download da imagem do wordpress na versão 6.1.1, onde possui quatro variaveis de ambiente, onde a `WORDPRESS_DB_HOST`, `WORDPRESS_DB_USER` e `WORDPRES_DB_NAME` apontam para ConfigMap feito anteriormente. Já a variavel `WORDPRESS_DB_PASSWORD` aponta para o secret.
+* O Deployment irá criar um container com a imagem do wordpress na versão 6.1.1 que ficará inserido em pod automaticamente criado pelo Deployment, onde possui quatro variaveis de ambiente, onde a `WORDPRESS_DB_HOST`, `WORDPRESS_DB_USER` e `WORDPRES_DB_NAME` apontam para ConfigMap feito anteriormente. Já a variavel `WORDPRESS_DB_PASSWORD` aponta para o secret.
 
 * No campo `port` possui a porta do container definida por 80.
 
 * Há também, o campo `strategy` definido como Recreate que caso aconteça algum erro ao subir o Pod.
 
-* No campo `volumeMounts` é usado para montar o volume no diretório /var/www/html dentro do container, e em `volumes`, ele solicita o PersistentVolume através do PersistentVolumeClaim já criado anteriormente.
+* No campo `volumeMounts` é usado para montar o volume no diretório /var/www/html dentro do container, e em `volumes`, ele solicita o PersistentVolume através do PersistentVolumeClaim já criado anteriormente para armazenamento dos dados do WordPress na máquina host.
 
 Para finalizar, basta inserir o comando para aplicar o deploy:
 ```ruby
@@ -349,7 +349,7 @@ kubectl apply -f wordpress-deployment.yaml
 
 Para que tenha o acesso ao serviço do Wordpress fora do cluster, é necessário a criação de um Ingress. Para que ele funcione, o mesmo necessita de um controlador, pois sem ele o Ingress não tem efeito. O controlador a ser usado será o nginx que é simples de se instalar e configurar.
 
-Para instalar o nginx, basta dar um apply no seguinte comando:
+Para instalar o nginx, basta inserir o seguinte comando:
 ```ruby
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.5.1/deploy/static/provider/cloud/deploy.yaml
 ```
@@ -383,7 +383,8 @@ spec:
 * O kind definido é o `Ingress`, sendo aplicado na namespace do labwordpress onde se encontra o serviço do mesmo em que ele irá se comunicar.
 * No `spec`, onde possui o ingressClassName, ele aponta para o nginx que foi criado pelo nginx. Também possui um host, onde é colocado o DNS (`lab-wordpress.com`) que aponta para o ip do WordPress(neste caso, localhost, configurado no arquivo hosts da máquina).
 * Ainda no dentro do `spec`, possui um `backend` que define o serviço em que o ingress irá redirecionar e a porta escolhida.
-* Por fim, o `path` que aponta o caminho após o DNS que será seguido com seu tipo.Para aplicar esta configuração, basta digitar o comando no terminal:
+* Por fim, o `path` que aponta o caminho após o DNS que será seguido com seu tipo. 
+Para aplicar esta configuração, basta digitar o comando no terminal:
 
 ```ruby
 kubectl apply -f wordpress-ingress.yaml
@@ -391,6 +392,12 @@ kubectl apply -f wordpress-ingress.yaml
 E por fim a aplicação do Wordpress já estará rodando.
 
 # Testando a aplicação
+
+Antes de realizar o teste, confira se está tudo rodando de forma correta. Para isso, basta digitar o comando:
+```ruby
+kubectl get all -n wordpress
+```
+Este comando deve retornar algumas informações sobre os serviços, deployments e pods já configurados.
 
 Para acessar a página da aplicação do WordPress, insira o DNS que foi incluído no Ingress criado do wordpress. Para obter este link, digite o comando no terminal:
 `kubectl get ing wordpress -n labwordpress`
